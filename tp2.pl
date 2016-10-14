@@ -23,9 +23,11 @@ primerAccionNoInterna(P+Q, L) :-
 	primerAccionNoInterna(Q, B),
 	union(A, B, L).
 
-reduce(A*P, A, P).
-reduce(P+_, A, R) :- reduce(P, A, R).
-reduce(_+Q, A, R) :- reduce(Q, A, R).
+reduce(P, tau, P).
+reduce(tau*P, tau, P).
+reduce(A*P, A, P) :- A \= tau.
+reduce(A*P+_, A, P).
+reduce(_+A*Q, A, Q).
 
 reduceLista(P, [], P).
 reduceLista(tau*P, L, Q) :- reduceLista(P, L, Q).
