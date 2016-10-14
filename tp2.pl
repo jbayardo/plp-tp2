@@ -6,8 +6,22 @@
 
 acciones(0, []).
 acciones(tau*P, A) :- acciones(P, A).
-acciones(P*Q, A) :- acciones(Q, X), union(X, [P], A).
-acciones(P+Q, A) :- acciones(P, X), acciones(Q, Y), union(X, Y, A).
+acciones(P*Q, A) :-
+	P \= tau,
+	acciones(Q, X),
+	union(X, [P], A).
+acciones(P+Q, A) :-
+	acciones(P, X),
+	acciones(Q, Y),
+	union(X, Y, A).
+
+primerAccionNoInterna(0, []).
+primerAccionNoInterna(tau*P, L) :- primerAccionNoInterna(P, L).
+primerAccionNoInterna(P*_, [P]) :- P \= tau.
+primerAccionNoInterna(P+Q, L) :-
+	primerAccionNoInterna(P, A),
+	primerAccionNoInterna(Q, B),
+	union(A, B, L).
 
 reduce(A*P, A, P).
 reduce(P+_, A, R) :- reduce(P, A, R).
@@ -15,7 +29,10 @@ reduce(_+Q, A, R) :- reduce(Q, A, R).
 
 reduceLista(P, [], P).
 reduceLista(tau*P, L, Q) :- reduceLista(P, L, Q).
-reduceLista(P, [X|Y], Q) :- reduce(P, X, Z), X \= tau, reduceLista(Z, Y, Q).
+reduceLista(P, [X|Y], Q) :-
+	reduce(P, X, Z),
+	X \= tau,
+	reduceLista(Z, Y, Q).
 
 unique([], []).
 unique([X|Y], B) :- member(X, Y), unique(Y, B).
@@ -28,16 +45,48 @@ trazas(P, T) :-
 	findall(X, reduceLista(P, X, _), Y),
 	unique(Y, T).
 
-residuo(X, L, Q) :-
-	findall(R, (
-		    member(Y, X),
-		    residuo(Y, L, H),
-		    subset(H, R)
-		), Q).
+isList([]).
+isList([_|_]).
 
+residuo([], _, []).
+residuo([X|Y], L, Q) :-
+	residuo(X, L, H),
+	residuo(Y, L, M),
+	union(H, M, Q).
 residuo(P, L, Q) :-
+	not(isList(P)),
 	findall(X, reduceLista(P, L, X), R),
 	unique(R, Q).
+
+must([], _).
+must([X|Y], L) :-
+	must(X, L),
+	must(Y, L).
+must(P, L) :-
+	not(isList(P)),
+	residuo(P, tau, QS),
+	member(Q, QS),
+	primerAccionNoInterna(Q, A),
+	member(X, A),
+	member(X, L).
+
+puedeReemplazarA(P, Q) :-
+	trazas(P, T1),
+	trazas(Q, T2),
+	union(P, Q, T),
+	acciones(P, A1),
+	acciones(Q, A2),
+	union(A1, A2, A),
+
+	residuo(P, T, M1),
+	must(M1, A),
+	residuo(Q, T, M2),
+	must(M2, A).
+
+equivalentes(P, Q) :-
+	puedeReemplazarA(P, Q),
+	puedeReemplazarA(Q, P).
+
 
 % Tests (van un par de ejemplos, agreguen los suyos).
 
