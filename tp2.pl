@@ -6,7 +6,7 @@
 
 % acciones(+P, -A)
 % Estas son literalmente las definiciones del TP
-acciones(0, 0).
+acciones(0, []).
 acciones(tau*P, A) :- acciones(P, A).
 acciones(P*Q, A) :-
 	P \= tau,
@@ -16,6 +16,8 @@ acciones(P+Q, A) :-
 	acciones(P, X),
 	acciones(Q, Y),
 	union(X, Y, A).
+
+
 
 % reduce(+P ?A, ?Q)
 % Una vez más, literlamente las definiciones del TP
@@ -93,6 +95,12 @@ must(P, L) :-
 	% Ya fu, no evalues más porque podemos seguir de largo (esto es el existe)
 	!.
 
+% sublist(?S, +L)
+% Sublistas de una lista
+sublist( [], _ ).
+sublist( [X|XS], [X|XSS] ) :- sublist( XS, XSS ).
+sublist( [X|XS], [_|XSS] ) :- sublist( [X|XS], XSS ).
+
 % puedeReemplazarA(+P, +Q)
 puedeReemplazarA(P, Q) :-
 	trazas(P, T1),
@@ -103,20 +111,25 @@ puedeReemplazarA(P, Q) :-
 	acciones(Q, A2),
 	union(A1, A2, A),
 
-	not((
-		member(S, T),
-		subset(L, A),
+	forall(
+		(member(S, T), sublist(L, A)),
+		(not((
+					residuo(P,S,R1),
+					must(R1,L),
+					not((residuo(Q,S,R2), must(R2,L))))
+			)
+		)
+	).
 
-		residuo(P, S, M1),
-		must(M1, L),
-		not(residuo(Q, S, M2), must(M2, L))
-	)).
+resyacc(P, Q, S, L) :-
+	trazas(P, T1),
+	trazas(Q, T2),
+	union(T1, T2, T),
 
-
-%	forall(
-%		(member(S, T), subset(L, A)),
-%		((residuo(P, S, M1), must(M1, L)) -> (residuo(Q, S, M2), must(M2, L)))
-%		).
+	acciones(P, A1),
+	acciones(Q, A2),
+	union(A1, A2, A),
+	member(S, T), sublist(L, A).
 
 % equivalentes(+P, +Q)
 equivalentes(P, Q) :-
