@@ -4,7 +4,9 @@
 
 % Implementación de los predicados.
 
-acciones(0, []).
+% acciones(+P, -A)
+% Estas son literalmente las definiciones del TP
+acciones(0, 0).
 acciones(tau*P, A) :- acciones(P, A).
 acciones(P*Q, A) :-
 	P \= tau,
@@ -15,27 +17,25 @@ acciones(P+Q, A) :-
 	acciones(Q, Y),
 	union(X, Y, A).
 
-primerAccionNoInterna(0, []).
-primerAccionNoInterna(tau*P, L) :- primerAccionNoInterna(P, L).
-primerAccionNoInterna(P*_, [P]) :- P \= tau.
-primerAccionNoInterna(P+Q, L) :-
-	primerAccionNoInterna(P, A),
-	primerAccionNoInterna(Q, B),
-	union(A, B, L).
+% reduce(+P ?A, ?Q)
+% Una vez más, literlamente las definiciones del TP
+reduce(P*Q, P, Q).
+reduce(P+_, A, W) :- reduce(P, A, W).
+reduce(_+Q, A, W) :- reduce(Q, A, W).
 
-reduce(P, tau, P).
-reduce(tau*P, tau, P).
-reduce(A*P, A, P) :- A \= tau.
-reduce(A*P+_, A, P).
-reduce(_+A*Q, A, Q).
-
+% reduceLista(+P, ?A, ?Q)
+% Un proceso reduce a sí mismo siempre que no ejecutemos nada
 reduceLista(P, [], P).
-reduceLista(tau*P, L, Q) :- reduceLista(P, L, Q).
-reduceLista(P, [X|Y], Q) :-
-	reduce(P, X, Z),
-	X \= tau,
-	reduceLista(Z, Y, Q).
+% Nos aseguramos que no nos meta un tau donde no queremos, separando por casos
+reduceLista(P, [L|LS], Q) :-
+	reduce(P, L, Y),
+	L \= tau,
+	reduceLista(Y, LS, Q).
+reduceLista(P, LS, Q) :-
+	reduce(P, tau, Y),
+	reduceLista(Y, LS, Q).
 
+% unique(+L, ?B)
 unique([], []).
 unique([X|Y], B) :- member(X, Y), unique(Y, B).
 unique([X|Y], B) :-
@@ -43,48 +43,82 @@ unique([X|Y], B) :-
 	unique(Y, Z),
 	B = [X | Z].
 
+% trazas(+P, -T)
 trazas(P, T) :-
+	% Buscamos todas las X tal que P reduce a algo usando X
 	findall(X, reduceLista(P, X, _), Y),
+	% Nos aseguramos que la salida sea sin repetidos
 	unique(Y, T).
 
+% isList(+L)
 isList([]).
 isList([_|_]).
 
+% residuo(+X, +L, -Q)
+% Manejamos el caso de listas primero, porque es facil de distinguir.
+% Simplemente ejecutamos un foldr.
 residuo([], _, []).
 residuo([X|Y], L, Q) :-
 	residuo(X, L, H),
 	residuo(Y, L, M),
 	union(H, M, Q).
+% Si esto no es una lista, buscamos todos los resultados que reducen piola.
 residuo(P, L, Q) :-
 	not(isList(P)),
 	findall(X, reduceLista(P, L, X), R),
 	unique(R, Q).
 
+% tausura(+P, ?Q)
+% La tausura de un proceso P es la clausura lambda, pero con un nombre cool.
+tausura(0, 0).
+tausura(tau*P, P).
+tausura(P*Q, P*Q) :- P \= tau.
+tausura(P + Q, N + M) :- tausura(P, N), tausura(Q, M).
+
+% must(+P, +L)
+% La lista vacia vuelve a ser un foldr.
 must([], _).
 must([X|Y], L) :-
 	must(X, L),
 	must(Y, L).
 must(P, L) :-
+	% Para un proceso...
 	not(isList(P)),
-	residuo(P, tau, QS),
-	member(Q, QS),
-	primerAccionNoInterna(Q, A),
-	member(X, A),
-	member(X, L).
+	% Calculo la clausura lambda (i.e. obtengo el proceso sin taus adelante)
+	tausura(P, Q),
+	% Obtengo una forma de reducir
+	reduce(Q, A, _),
+	% Me aseguro que sea miembro de la lista
+	member(A, L),
+	% Ya fu, no evalues más porque podemos seguir de largo (esto es el existe)
+	!.
 
+% puedeReemplazarA(+P, +Q)
 puedeReemplazarA(P, Q) :-
 	trazas(P, T1),
 	trazas(Q, T2),
-	union(P, Q, T),
+	union(T1, T2, T),
+
 	acciones(P, A1),
 	acciones(Q, A2),
 	union(A1, A2, A),
 
-	residuo(P, T, M1),
-	must(M1, A),
-	residuo(Q, T, M2),
-	must(M2, A).
+	not((
+		member(S, T),
+		subset(L, A),
 
+		residuo(P, S, M1),
+		must(M1, L),
+		not(residuo(Q, S, M2), must(M2, L))
+	)).
+
+
+%	forall(
+%		(member(S, T), subset(L, A)),
+%		((residuo(P, S, M1), must(M1, L)) -> (residuo(Q, S, M2), must(M2, L)))
+%		).
+
+% equivalentes(+P, +Q)
 equivalentes(P, Q) :-
 	puedeReemplazarA(P, Q),
 	puedeReemplazarA(Q, P).
