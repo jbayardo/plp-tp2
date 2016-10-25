@@ -139,6 +139,15 @@ equivalentes(P, Q) :-
 
 % Tests (van un par de ejemplos, agreguen los suyos).
 
+% differs(+L1,+L2)
+% chequea si dos listas no tienen los mismos elementos
+differs(T, Q):-
+	member(X,T),
+	not(member(X, Q)).
+
+sameSet(T, Q):-
+	not(differs(T,Q)).
+
 test(0) :- not((acciones(0, L), member(_,L))).
 
 test(1) :- reduceLista(0,[],0).
@@ -149,4 +158,69 @@ test(3) :- puedeReemplazarA(tau*a*0, a*0).
 test(4) :- equivalentes(a*b*(c*0+d*0), a*b*(d*tau*0+c*0)).
 test(5) :- not(equivalentes(a*b*0, b*a*0)).
 
-tests :- forall(between(0, 5, N), test(N)). %Actualizar la cantidad total de tests para contemplar los que agreguen ustedes.
+test(6) :- forall(acciones(m*(t*tau*0+c*0), X), X=[t,c,m]).
+test(7) :- forall(acciones(0, X), X=[]).
+
+test(8) :- forall(
+									reduce(m*(t*0+c*0)+m*j*0+j*c*0+tau*c*0, A, R),
+									(
+										A = m, R = (t*0+c*0) ;
+										A = m, R = (j*0) ;
+										A = j, R = (c*0) ;
+										A = tau, R = (c*0)
+									)
+								 ).
+
+test(9) :- forall(reduceLista(0,S,Q), (Q=0, S=[])).
+test(10):- forall(
+									reduceLista(c * ((a*0) + (b * tau * tau * 0)), S, Q),
+									(
+										S = [], Q = (c* (a*0+b*tau*tau*0)) ;
+										S = [c], Q = (a*0+b*tau*tau*0) ;
+										S = [c, a], Q = 0 ;
+										S = [c, b], Q = (tau*tau*0) ;
+										S = [c, b], Q = (tau*0) ;
+										S = [c, b], Q = 0
+									)
+								 ).
+
+test(11):- forall(trazas(c * ((a*0) + (b * tau * 0)), X),
+									(
+										X = [[], [c], [c, a], [c, b]]
+									)
+								 ).
+test(12):- forall(trazas((a*0) + (b * 0), X),
+									(
+										X = [[], [a], [b]]
+									)
+								 ).
+
+test(13):- forall(residuo((a*0+b*tau*0+b*c*0),[b],Q),
+									(
+										Q = [tau*0, 0, c*0]
+									)
+								 ).
+test(14):- forall(residuo((a*0+b*tau*0+b*c*0),[c],Q),
+									(
+										Q = []
+									)
+								 ).
+test(15):- forall(residuo([(a*0+b*tau*0+b*c*0),(b*a*c*0)],[b],Q),
+									(
+										Q = [tau*0, 0, c*0, a*c*0]
+									)
+								 ).
+test(16):- forall(residuo([(a*0+b*tau*0+b*c*0),(b*a*c*0+b*c*0)],[b],Q),
+									(
+										Q = [tau*0, 0, a*c*0, c*0]
+									)
+								 ).
+
+test(17):-  must((a*0+b*0+b*c*0),[a]),
+						must((tau*b*0+b*c*0),[b]),
+						must((a*0+b*c*0),[a,b]),
+						not(must((a*0+b*c*0),[c])),
+						not(must([c*0,(b*c*0)],[c])),
+						must([b*0,(a*0+b*c*0)],[b]).
+
+tests :- forall(between(0, 17, N), test(N)). %Actualizar la cantidad total de tests para contemplar los que agreguen ustedes.
